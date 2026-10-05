@@ -1,0 +1,26 @@
+# 의존성 / 빌드 결과
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# 환경 변수 (.env류 전부)
+.env
+.env.*
+*.env
+
+# 자산 데이터 백업 파일 — 암호문이라도 저장소에 절대 올리지 않는다
+*.backup.json
+*.enc.json
+asset-tracker-backup*.json
+backups/
+
+# 로그 / OS / 에디터
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.idea/

@@ -1,0 +1,41 @@
+/**
+ * DashboardKit Free (CodedThemes, MIT — licenses/DashboardKit-LICENSE.txt) 테마를 기반으로 한 스타일 진입점.
+ * 원본에서 쓰지 않는 아이콘 폰트(feather, fontawesome, cryptofont), 커스터마이저, 플러그인 스타일은 뺐다.
+ * 외부 CDN 없이 번들된 Inter / Material Icons Two Tone 폰트만 사용한다.
+ */
+
+@import '../fonts/material.css';
+
+// main framework
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+@import 'settings/color-variables';
+@import 'settings/theme-variables';
+@import 'settings/bootstrap-variables';
+@import 'bootstrap/scss/bootstrap';
+
+@import 'themes/generic';
+@import 'themes/general';
+
+// Layouts
+@import 'themes/layouts/pc-sidebar';
+@import 'themes/layouts/pc-header';
+@import 'themes/layouts/pc-common';
+
+// Components
+@import 'themes/components/avatar';
+@import 'themes/components/badge';
+@import 'themes/components/button';
+@import 'themes/components/dropdown';
+@import 'themes/components/card';
+@import 'themes/components/progress';
+@import 'themes/components/table';
+@import 'themes/components/tabs';
+@import 'themes/components/form';
+
+// pages
+@import 'pages/authentication';
+
+// 자산 트래커 전용
+@import 'app';
