@@ -2,13 +2,16 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// 외부로 데이터를 보낼 통로를 막는 CSP. 개발 서버는 인라인 스크립트를 쓰므로 빌드 결과에만 넣는다.
+// 외부로 데이터를 보낼 통로를 막는 CSP(Firebase 주소만 예외). 개발 서버는 인라인 스크립트를 쓰므로 빌드 결과에만 넣는다.
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
-  "connect-src 'self'",
+  // Firebase 로그인(identitytoolkit, securetoken)과 Firestore만 허용. 그 밖의 외부 전송은 차단.
+  "connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+  "frame-src 'none'",
+  "worker-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",

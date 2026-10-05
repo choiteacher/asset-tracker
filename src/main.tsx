@@ -3,16 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router';
 import { App } from './App';
 import { DisplayPrefsProvider } from './session/DisplayPrefs';
-import { SessionProvider } from './session/SessionContext';
+import { AuthProvider } from './firebase/AuthContext';
 import './theme/scss/style.scss';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
       <DisplayPrefsProvider>
-        <SessionProvider>
+        <AuthProvider>
           <App />
-        </SessionProvider>
+        </AuthProvider>
       </DisplayPrefsProvider>
     </HashRouter>
   </StrictMode>,

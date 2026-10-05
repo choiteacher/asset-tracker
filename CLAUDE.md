@@ -25,12 +25,14 @@
 내년 4월 아파트 분양에 대비해 자산 흐름을 추적한다. 정기적금/예금/청약저축/주식/펀드/현금/대출을 등록하면 현재 순자산을 초 단위로, 0.1원 단위까지 실시간으로 보여준다. 총 자산을 유동자산/동결자산으로 나누고, 대출과 이자소득세를 반영한다.
 
 ### 절대 원칙
-- **배포**: GitHub Pages만 사용(GitHub Actions로 배포). Vercel, Netlify, Firebase 등 다른 서비스와 서버, 외부 DB는 사용하지 않는다.
+- **배포**: 화면은 GitHub Pages만 사용(GitHub Actions로 배포). Vercel, Netlify 등 다른 호스팅과 자체 서버는 사용하지 않는다.
+- **백엔드(2026-10-05 사용자 결정으로 변경)**: Firebase Authentication(이메일/비밀번호, 관리자 계정 1개, 회원가입 없음)과 Cloud Firestore(Lite)만 사용한다. 분석·광고·호스팅 등 다른 Firebase 서비스는 쓰지 않는다. 설정 절차: `docs/FIREBASE_SETUP.md`.
 - **기술**: Vite + React + TypeScript, HashRouter, 차트는 Recharts, 테스트는 Vitest. 외부 CDN 의존 최소화.
 - **사용 환경**: Windows + PowerShell. 터미널 명령어는 PowerShell 기준으로 안내한다.
 - **사용 패턴**: 메인 PC에서 가끔 데이터를 등록/수정하고, 평소에는 열람 위주. PC 화면 우선 + 모바일에서도 깨지지 않는 반응형. 열람 화면(대시보드)과 입력 화면(등록/수정)을 분리한다.
-- **저장/암호화**: 데이터는 브라우저 IndexedDB에만 저장하며, 반드시 비밀번호 기반으로 암호화한다(PBKDF2 + AES-GCM, WebCrypto).
-- **데이터 비노출**: 사용자의 자산 데이터는 소스코드, 저장소, 콘솔 로그, URL, 에러 메시지에 절대 노출하지 않는다. 테스트/샘플 데이터는 가상의 숫자만 사용한다.
+- **저장/암호화**: 데이터는 Firestore 문서 `vaults/{관리자 UID}` 하나에만 저장하며(브라우저에 사본을 두지 않음), 반드시 브라우저에서 비밀번호 기반으로 암호화한 암호문만 올린다(PBKDF2 + AES-GCM, WebCrypto). 로그인 비밀번호와 잠금 해제(암호화) 비밀번호는 별개다.
+- **Firebase 보안**: Firestore 보안 규칙은 관리자 UID 한 개만 자기 문서를 읽고 쓰게 하고 문서 구조·크기·revision 증가를 검사한다(`firebase/firestore.rules.template`). 관리자 UID가 들어간 규칙 파일과 `.env.local`은 저장소에 올리지 않는다. Firebase 웹 설정값은 GitHub Actions 변수로 빌드에 넣는다. CSP는 Firebase 주소만 예외로 연다.
+- **데이터 비노출**: 사용자의 자산 데이터는 소스코드, 저장소, 콘솔 로그, URL, 에러 메시지, Firestore(평문)에 절대 노출하지 않는다. 테스트/샘플 데이터는 가상의 숫자만 사용한다.
 - **.gitignore**: 백업 파일(`*.backup.json`, `*.enc.json` 등)과 `.env`류를 반드시 포함한다.
 - **저장 로직 분리**: `StorageAdapter` 인터페이스(load/save/export/import)로 분리한다.
 - **계산 로직 분리**: 금융 계산 로직은 UI와 분리된 순수 함수로 작성하고, 고정된 기준 시각을 넣어 검증하는 Vitest 단위 테스트를 함께 작성한다.

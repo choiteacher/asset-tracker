@@ -30,10 +30,12 @@ export function recordFailure(state: ThrottleState, now: number): ThrottleState 
 }
 
 const STORAGE_KEY = 'asset-tracker.unlock-throttle';
+/** 로그인(Firebase) 실패 횟수는 잠금 해제와 따로 센다. */
+export const LOGIN_THROTTLE_KEY = 'asset-tracker.login-throttle';
 
-export function loadThrottle(): ThrottleState {
+export function loadThrottle(key: string = STORAGE_KEY): ThrottleState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return EMPTY_THROTTLE;
     const parsed = JSON.parse(raw) as Partial<ThrottleState>;
     const failures = Number.isInteger(parsed.failures) ? Math.max(0, parsed.failures as number) : 0;
@@ -44,10 +46,10 @@ export function loadThrottle(): ThrottleState {
   }
 }
 
-export function storeThrottle(state: ThrottleState): void {
+export function storeThrottle(state: ThrottleState, key: string = STORAGE_KEY): void {
   try {
-    if (state.failures === 0) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (state.failures === 0) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(state));
   } catch {
     // 저장 불가(사생활 보호 모드 등)면 메모리 상태만으로 동작한다.
   }

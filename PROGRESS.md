@@ -13,7 +13,8 @@
 | 3 | 이자·세금 계산 엔진 + 초 단위 실시간 메인 화면 | 완료 | 자동 진행(사용자 지시) |
 | 4 | 대출 등록 + 상환 계산 + 금융 Tip | 완료 | 자동 진행 |
 | 5 | 분양 D-day 대시보드 | 완료 | 자동 진행 |
-| 6 | 기록·그래프·알림·마무리 | 완료 | 자동 진행. 최종 보고 후 사용자 확인 대기 |
+| 6 | 기록·그래프·알림·마무리 | 완료 | 자동 진행 |
+| 7 | Firebase 전환(로그인 + Firestore 저장) | 코드 완료(푸시됨), Firebase 설정 진행중 | 2026-10-05 사용자 요청 |
 
 ## 마지막 완료 단계
 - 6단계까지 완료(2026-10-05). 테스트 112개 통과, 빌드 성공.
@@ -44,6 +45,24 @@
 - 편집 모드: 메모리에만, 잠그면 보기 모드로. 관리 메뉴(자산·대출·분양 일정·설정)만 보호
 - 화면 설정(세후/세전, 금액 가리기, 테마, 큰 글씨)은 localStorage(자산 데이터 아님)
 
+### Firebase 전환 (2026-10-05 사용자 결정)
+- 이유: 브라우저 저장만으로는 분실 위험·자동 저장 불편. 사용자가 Firebase 사용을 결정(원칙 변경, CLAUDE.md 반영)
+- 결정: **암호화 유지**(Firestore엔 암호문만, 로그인 비밀번호와 잠금 해제 비밀번호 분리), **Firestore만 사용**(브라우저 사본 없음, Firestore Lite)
+- 구조: `AuthProvider`(Firebase Auth, sessionStorage 유지) → `SessionProvider`(adapter = `RevisionedAdapter(FirestoreDocStore(db, uid))`, 잠금 시 로그아웃)
+- 문서: `vaults/{uid}` = { envelope, revision, updatedAt }. 저장 시 revision 일치 확인(트랜잭션) → 불일치면 VaultConflictError
+- 보안 규칙: `firebase/firestore.rules.template` → `npm run deploy:rules`가 .env.local의 FIREBASE_ADMIN_UID로 `firebase/firestore.rules`(gitignore) 생성 후 배포
+- 설정값: `.env.local`(로컬), GitHub Actions Variables(배포). 없으면 "Firebase 설정 필요" 화면
+- CSP connect-src: self + firestore/identitytoolkit/securetoken.googleapis.com, frame-src none
+- 이전 버전 브라우저 데이터: 첫 설정 화면 "기존 데이터" 탭에서 서버로 옮기고 브라우저 사본 삭제
+- 규칙 에뮬레이터 테스트는 Java가 없어 못 함(배포 시 서버 문법 검사 + 실사용 확인 필요)
+
+### Firebase 콘솔 진행 상황 (2026-10-05 기준, 프로젝트 `my-webapp-552ba`)
+- 완료: 1~2(프로젝트·웹 앱), 3(이메일/비밀번호 사용, 이메일 링크 끔), 6(Firestore default, 규칙 = 전부 거부)
+- 미완료: 4(관리자 계정 — 사용자 0명), 5(사용자 작업: 가입·삭제 아직 켜져 있음 → 해제 필요, 비밀번호 정책, 승인된 도메인 확인), 7(API 키 제한), 8(.env.local의 FIREBASE_ADMIN_UID 비어 있음), 9(규칙 배포), 10(GitHub Variables 미등록)
+- Firebase 코드는 2026-10-05 커밋·푸시됨. GitHub Variables가 없어서 배포본은 "Firebase 설정 필요" 화면이 뜸(10번 후 재배포하면 해결)
+- 다른 PC에서 이어갈 때: `.env.local`은 저장소에 없으므로 `.env.example`을 복사해 Firebase 콘솔(프로젝트 설정 → 내 앱)의 값을 다시 넣는다. `npm install` 후 `npx firebase-tools login`
+
 ## 다음에 할 일
+0. **사용자: `docs/FIREBASE_SETUP.md` 4·5·7~10번 진행** → 10번(GitHub Variables) 후 재배포(Actions 재실행 또는 push) → 로그인·잠금 해제 비밀번호 만들기 확인
 1. 사용자 확인: [가안] 항목(청약저축 이자, 월이자지급식), 세율 예시값 수정
 2. 실제 사용 중 발견되는 문제 수정

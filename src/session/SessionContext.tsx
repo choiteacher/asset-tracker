@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { VaultKey } from '../crypto/vault';
 import { appendChange, type ChangeEntry } from '../data/history';
 import { clampAutoLockMinutes, type AppData } from '../data/schema';
-import { IndexedDbAdapter } from '../storage/indexedDbAdapter';
 import type { StorageAdapter } from '../storage/StorageAdapter';
 import { downloadTextFile } from '../utils/download';
 import {
@@ -15,7 +14,8 @@ import {
   type OpenVault,
 } from './vaultService';
 
-export type SessionStatus = 'loading' | 'setup' | 'locked' | 'unlocked' | 'unavailable';
+/** forbidden: 로그인은 됐지만 보안 규칙상 이 계정은 데이터에 접근할 수 없음(관리자 아님). */
+export type SessionStatus = 'loading' | 'setup' | 'locked' | 'unlocked' | 'unavailable' | 'forbidden';
 
 interface SessionValue {
   status: SessionStatus;
@@ -38,13 +38,26 @@ interface SessionValue {
 
 const SessionContext = createContext<SessionValue | null>(null);
 
-/** 브라우저가 저장 공간 부족 시 데이터를 임의로 지우지 않도록 요청한다(브라우저가 거절할 수도 있음). */
-function requestPersistentStorage(): void {
-  navigator.storage?.persist?.().catch(() => undefined);
+function isPermissionDenied(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'permission-denied';
 }
 
-export function SessionProvider({ children, adapter }: { children: ReactNode; adapter?: StorageAdapter }) {
-  const storage = useMemo(() => adapter ?? new IndexedDbAdapter(), [adapter]);
+/**
+ * adapter: 암호문을 보관할 저장소(Firestore 문서).
+ * onLock: 잠글 때(수동·자동) 호출. 앱은 여기서 Firebase 로그아웃까지 한다.
+ */
+export function SessionProvider({
+  children,
+  adapter,
+  onLock,
+}: {
+  children: ReactNode;
+  adapter: StorageAdapter;
+  onLock?: () => void;
+}) {
+  const storage = adapter;
+  const onLockRef = useRef(onLock);
+  onLockRef.current = onLock;
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [data, setData] = useState<AppData | null>(null);
   // 키와 최신 데이터는 메모리(ref)에만 둔다.
@@ -58,7 +71,7 @@ export function SessionProvider({ children, adapter }: { children: ReactNode; ad
     storage
       .load()
       .then((envelope) => !cancelled && setStatus(envelope ? 'locked' : 'setup'))
-      .catch(() => !cancelled && setStatus('unavailable'));
+      .catch((e) => !cancelled && setStatus(isPermissionDenied(e) ? 'forbidden' : 'unavailable'));
     return () => {
       cancelled = true;
     };
@@ -76,6 +89,7 @@ export function SessionProvider({ children, adapter }: { children: ReactNode; ad
     dataRef.current = null;
     setData(null);
     setStatus('locked');
+    onLockRef.current?.();
   }, []);
 
   const requireOpen = useCallback((): { vaultKey: VaultKey; data: AppData } => {
@@ -92,7 +106,6 @@ export function SessionProvider({ children, adapter }: { children: ReactNode; ad
   const setup = useCallback(
     async (password: string) => {
       enter(await createVault(storage, password, new Date()));
-      requestPersistentStorage();
     },
     [storage, enter],
   );
@@ -100,7 +113,6 @@ export function SessionProvider({ children, adapter }: { children: ReactNode; ad
   const unlock = useCallback(
     async (password: string) => {
       enter(await openVault(storage, password));
-      requestPersistentStorage();
     },
     [storage, enter],
   );
@@ -162,8 +174,7 @@ export function SessionProvider({ children, adapter }: { children: ReactNode; ad
     (fileText: string, password: string) =>
       enqueue(async () => {
         enter(await restoreVaultBackup(storage, fileText, password));
-        requestPersistentStorage();
-      }),
+        }),
     [storage, enqueue, enter],
   );
 

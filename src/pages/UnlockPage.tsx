@@ -9,6 +9,7 @@ import {
 } from '../auth/unlockThrottle';
 import { VaultDecryptError } from '../crypto/vault';
 import { AuthShell } from '../components/AuthShell';
+import { useAuth } from '../firebase/AuthContext';
 import { useSession } from '../session/SessionContext';
 import { toUserMessage } from '../utils/errors';
 
@@ -16,10 +17,11 @@ const RESET_WORD = '초기화';
 
 export function UnlockPage() {
   const { unlock, resetAll } = useSession();
+  const { signOut } = useAuth();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [throttle, setThrottle] = useState<ThrottleState>(loadThrottle);
+  const [throttle, setThrottle] = useState<ThrottleState>(() => loadThrottle());
   const [now, setNow] = useState(Date.now);
   const [showReset, setShowReset] = useState(false);
   const [resetText, setResetText] = useState('');
@@ -57,13 +59,13 @@ export function UnlockPage() {
 
   async function onReset() {
     if (resetText !== RESET_WORD) return;
-    if (!window.confirm('이 브라우저의 모든 자산 데이터가 영구 삭제됩니다. 정말 초기화할까요?')) return;
+    if (!window.confirm('서버에 저장된 모든 자산 데이터가 영구 삭제됩니다. 정말 초기화할까요?')) return;
     await resetAll();
     storeThrottle(EMPTY_THROTTLE);
   }
 
   return (
-    <AuthShell title="잠금 해제" subtitle="비밀번호를 입력하면 이 브라우저에서 데이터를 복호화합니다.">
+    <AuthShell title="잠금 해제" subtitle="잠금 해제 비밀번호를 입력하면 서버에서 받은 암호문을 이 브라우저 안에서만 풉니다.">
       <form onSubmit={onSubmit} className="text-start">
         <div className="input-group mb-3">
           <span className="input-group-text" aria-hidden="true">
@@ -72,8 +74,8 @@ export function UnlockPage() {
           <input
             className="form-control"
             type="password"
-            aria-label="비밀번호"
-            placeholder="비밀번호"
+            aria-label="잠금 해제 비밀번호"
+            placeholder="잠금 해제 비밀번호"
             autoComplete="current-password"
             autoFocus
             value={password}
@@ -98,9 +100,14 @@ export function UnlockPage() {
 
       <div className="mt-4 pt-3 border-top text-start">
         {!showReset ? (
-          <button type="button" className="btn btn-link p-0 text-muted" onClick={() => setShowReset(true)}>
-            비밀번호를 잊으셨나요?
-          </button>
+          <div className="d-flex justify-content-between flex-wrap gap-2">
+            <button type="button" className="btn btn-link p-0 text-muted" onClick={() => setShowReset(true)}>
+              잠금 해제 비밀번호를 잊으셨나요?
+            </button>
+            <button type="button" className="btn btn-link p-0 text-muted" onClick={() => void signOut()}>
+              로그아웃
+            </button>
+          </div>
         ) : (
           <div>
             <p className="small">

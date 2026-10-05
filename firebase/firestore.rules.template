@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// 자산 트래커 Firestore 보안 규칙.
+// - 관리자 계정(UID 1개)만 자기 문서 vaults/{uid} 하나를 읽고 쓸 수 있다. 그 밖의 모든 경로·계정은 거부.
+// - 문서에는 암호문 봉투(envelope)와 버전 번호(revision), 서버 시각(updatedAt)만 허용한다.
+// - 저장할 때마다 revision이 정확히 1 올라가야 한다(오래된 화면의 덮어쓰기 방지).
+// __ADMIN_UID__ 는 배포 스크립트(npm run deploy:rules)가 .env.local의 FIREBASE_ADMIN_UID로 바꿔 넣는다.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == '__ADMIN_UID__'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    function isOwnDoc(uid) {
+      return isAdmin() && uid == request.auth.uid;
+    }
+
+    function validVault() {
+      let d = request.resource.data;
+      let e = d.envelope;
+      return d.keys().hasOnly(['envelope', 'revision', 'updatedAt'])
+        && d.keys().hasAll(['envelope', 'revision', 'updatedAt'])
+        && d.revision is int
+        && d.updatedAt == request.time
+        && e is map
+        && e.keys().hasOnly(['format', 'version', 'kdf', 'cipher', 'ciphertext'])
+        && e.format == 'asset-tracker/vault'
+        && e.version is int
+        && e.kdf is map
+        && e.kdf.iterations is int
+        && e.kdf.iterations >= 300000
+        && e.cipher is map
+        && e.ciphertext is string
+        && e.ciphertext.size() < 900000;
+    }
+
+    match /vaults/{uid} {
+      allow get: if isOwnDoc(uid);
+      allow list: if false;
+      allow create: if isOwnDoc(uid) && validVault() && request.resource.data.revision == 1;
+      allow update: if isOwnDoc(uid) && validVault()
+        && request.resource.data.revision == resource.data.revision + 1;
+      allow delete: if isOwnDoc(uid);
+    }
+
+    // 그 밖의 모든 문서는 읽기·쓰기 금지
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -4,10 +4,18 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# 환경 변수 (.env류 전부)
+# 환경 변수 (.env류 전부). 예시 파일만 올린다.
 .env
 .env.*
 *.env
+!.env.example
+
+# Firebase: 관리자 UID가 들어간 규칙 파일, CLI 캐시/로그
+firebase/firestore.rules
+.firebaserc
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
 
 # 자산 데이터 백업 파일 — 암호문이라도 저장소에 절대 올리지 않는다
 *.backup.json

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { LocalImportForm, useLegacyVault } from '../components/LocalImportForm';
 import { assessPassword } from '../auth/passwordStrength';
 import { AuthShell } from '../components/AuthShell';
 import { PasswordStrengthMeter } from '../components/PasswordStrengthMeter';
@@ -8,7 +9,14 @@ import { toUserMessage } from '../utils/errors';
 
 export function SetupPage() {
   const { setup } = useSession();
-  const [mode, setMode] = useState<'new' | 'restore'>('new');
+  const touched = useRef(false);
+  const choose = (m: 'new' | 'restore' | 'legacy') => {
+    touched.current = true;
+    setMode(m);
+  };
+  const legacy = useLegacyVault();
+  const [mode, setMode] = useState<'new' | 'restore' | 'legacy'>('new');
+  const shownMode = legacy.found && mode === 'new' && !touched.current ? 'legacy' : mode;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -32,21 +40,30 @@ export function SetupPage() {
   }
 
   return (
-    <AuthShell title="시작하기" subtitle="데이터는 이 브라우저에만, 비밀번호로 암호화되어 저장됩니다.">
+    <AuthShell title="잠금 해제 비밀번호 만들기" subtitle="데이터는 이 비밀번호로 암호화된 상태로만 서버(Firestore)에 저장됩니다.">
       <ul className="nav nav-pills nav-fill mb-4 app-pills" role="tablist">
         <li className="nav-item">
-          <button type="button" role="tab" aria-selected={mode === 'new'} className={`nav-link w-100${mode === 'new' ? ' active' : ''}`} onClick={() => setMode('new')}>
+          <button type="button" role="tab" aria-selected={shownMode === 'new'} className={`nav-link w-100${shownMode === 'new' ? ' active' : ''}`} onClick={() => choose('new')}>
             새로 시작
           </button>
         </li>
         <li className="nav-item">
-          <button type="button" role="tab" aria-selected={mode === 'restore'} className={`nav-link w-100${mode === 'restore' ? ' active' : ''}`} onClick={() => setMode('restore')}>
+          <button type="button" role="tab" aria-selected={shownMode === 'restore'} className={`nav-link w-100${shownMode === 'restore' ? ' active' : ''}`} onClick={() => choose('restore')}>
             백업에서 복구
           </button>
         </li>
+        {legacy.found && (
+          <li className="nav-item">
+            <button type="button" role="tab" aria-selected={shownMode === 'legacy'} className={`nav-link w-100${shownMode === 'legacy' ? ' active' : ''}`} onClick={() => choose('legacy')}>
+              기존 데이터
+            </button>
+          </li>
+        )}
       </ul>
 
-      {mode === 'new' ? (
+      {shownMode === 'legacy' ? (
+        <LocalImportForm />
+      ) : shownMode === 'new' ? (
         <form onSubmit={onSubmit} className="text-start">
           <div className="mb-2">
             <label className="form-label" htmlFor="setup-pw">
@@ -75,7 +92,7 @@ export function SetupPage() {
             </div>
           )}
           <div className="alert alert-danger py-2 small">
-            비밀번호를 잊으면 데이터를 복구할 수 없습니다. 비밀번호는 어디에도 저장되지 않습니다.
+            로그인 비밀번호와 다른 비밀번호를 쓰세요. 이 비밀번호를 잊으면 데이터를 복구할 수 없습니다(어디에도 저장되지 않음).
           </div>
           <button type="submit" className="btn btn-primary w-100" disabled={!canSubmit}>
             {busy ? '암호화 키 만드는 중…' : '비밀번호 설정하고 시작'}
